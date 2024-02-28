@@ -375,5 +375,11 @@ void raft_server::cleanup_auto_fwd_pkgs() {
     auto_fwd_pkgs_.clear();
 }
 
+void raft_server::test() {
+  p_in("srv %d, setting test------------", this->id_);
+  test_disable_election_.store(true);
+  test_disable_leader_yield_.store(true);
+}
+
 } // namespace nuraft;
 

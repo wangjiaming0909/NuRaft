@@ -109,6 +109,8 @@ raft_server::raft_server(context* ctx, const init_options& opt)
     , last_snapshot_(ctx->state_machine_->last_snapshot())
     , ea_follower_log_append_(new EventAwaiter())
     , test_mode_flag_(opt.test_mode_flag_)
+    , test_disable_election_(false)
+    , test_disable_leader_yield_(false)
 {
     if (opt.raft_callback_) {
         ctx->set_cb_func(opt.raft_callback_);
@@ -1104,7 +1106,7 @@ bool raft_server::check_leadership_validity() {
         //   For a cluster where the number of members is the same
         //   as the size of quorum, we should not expire leadership,
         //   since it will block the cluster doing any further actions.
-        if (num_voting_members <= min_quorum_size) {
+        if (num_voting_members <= min_quorum_size || test_disable_election_.load()) {
             p_wn("we cannot yield the leadership of this small cluster");
             return true;
         }

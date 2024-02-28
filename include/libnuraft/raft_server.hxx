@@ -184,7 +184,9 @@ public:
 
     __nocopy__(raft_server);
 
+
 public:
+    void test();
     /**
      * Check if this server is ready to serve operation.
      *
@@ -1531,6 +1533,9 @@ protected:
      * If `true`, test mode is enabled.
      */
     std::atomic<bool> test_mode_flag_;
+
+    std::atomic<bool> test_disable_election_;
+    std::atomic<bool> test_disable_leader_yield_;
 };
 
 } // namespace nuraft;

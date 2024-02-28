@@ -144,6 +144,10 @@ void help(const std::string& cmd,
     << "\n";
 }
 
+void test() {
+  stuff.raft_instance_->test();
+}
+
 bool do_cmd(const std::vector<std::string>& tokens) {
     if (!tokens.size()) return true;
 
@@ -160,7 +164,8 @@ bool do_cmd(const std::vector<std::string>& tokens) {
     } else if ( cmd == "add" ) {
         // e.g.) add 2 localhost:12345
         add_server(cmd, tokens);
-
+    } else if (cmd == "rm") {
+      rm_server(cmd, tokens);
     } else if ( cmd == "st" || cmd == "stat" ) {
         print_status(cmd, tokens);
 
@@ -169,6 +174,8 @@ bool do_cmd(const std::vector<std::string>& tokens) {
 
     } else if ( cmd == "h" || cmd == "help" ) {
         help(cmd, tokens);
+    } else if (cmd == "t" || cmd == "test") {
+      test();
     }
     return true;
 }

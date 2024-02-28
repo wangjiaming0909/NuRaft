@@ -95,6 +95,26 @@ void add_server(const std::string& cmd,
               << std::endl;
 }
 
+void rm_server(const std::string& cmd, const std::vector<std::string>& tokens) {
+  if (tokens.size() < 2) {
+    std::cout << "too few arguments" << std::endl;
+    return;
+  }
+
+  int server_id_to_rm = atoi(tokens[1].c_str());
+  if (!server_id_to_rm) {
+    std::cout << "wrong server id: " << server_id_to_rm << std::endl;
+    return;
+  }
+  auto ret = stuff.raft_instance_->remove_srv(server_id_to_rm);
+  if (!ret->get_accepted()) {
+    std::cout << "failed to remove server: " << ret->get_result_code() << std::endl;
+    return;
+  }
+  std::cout << "async request is in progress (check with `list` command)"
+    << std::endl;
+}
+
 void server_list(const std::string& cmd,
                  const std::vector<std::string>& tokens)
 {
@@ -111,6 +131,8 @@ void server_list(const std::string& cmd,
         if (srv->get_id() == leader_id) {
             std::cout << " (LEADER)";
         }
+        std::cout << " learner: " << srv->is_learner();
+        std::cout << " priority: " << srv->get_priority();
         std::cout << std::endl;
     }
 }
@@ -131,6 +153,16 @@ std::vector<std::string> tokenize(const char* str, char c = ' ') {
 void loop() {
     char cmd[1000];
     std::string prompt = "calc " + std::to_string(stuff.server_id_) + "> ";
+    if (0 && stuff.server_id_ == 1) {
+      bool cont = do_cmd({"add", "2", "127.0.0.1:10002"});
+      if (!cont) return;
+      std::this_thread::sleep_for(std::chrono::seconds{1});
+      cont = do_cmd({"add", "3", "127.0.0.1:10003"});
+      if (!cont) return;
+      stuff.raft_instance_->test();
+    } else {
+      stuff.raft_instance_->test();
+    }
     while (true) {
 #if defined(__linux__) || defined(__APPLE__)
         std::cout << _CLM_GREEN << prompt << _CLM_END;
@@ -152,7 +184,7 @@ void init_raft(ptr<state_machine> sm_instance) {
     std::string log_file_name = "./srv" +
                                 std::to_string( stuff.server_id_ ) +
                                 ".log";
-    ptr<logger_wrapper> log_wrap = cs_new<logger_wrapper>( log_file_name, 4 );
+    ptr<logger_wrapper> log_wrap = cs_new<logger_wrapper>( log_file_name, 5 );
     stuff.raft_logger_ = log_wrap;
 
     // State machine.
@@ -163,7 +195,7 @@ void init_raft(ptr<state_machine> sm_instance) {
 
     // ASIO options.
     asio_service::options asio_opt;
-    asio_opt.thread_pool_size_ = 4;
+    asio_opt.thread_pool_size_ = 2;
 
     // Raft parameters.
     raft_params params;
@@ -174,9 +206,9 @@ void init_raft(ptr<state_machine> sm_instance) {
     params.election_timeout_upper_bound_ = 4000;
 #else
     // heartbeat: 100 ms, election timeout: 200 - 400 ms.
-    params.heart_beat_interval_ = 100;
-    params.election_timeout_lower_bound_ = 200;
-    params.election_timeout_upper_bound_ = 400;
+    params.heart_beat_interval_ = 200;
+    params.election_timeout_lower_bound_ = 1000;
+    params.election_timeout_upper_bound_ = 2000;
 #endif
     // Upto 5 logs will be preserved ahead the last snapshot.
     params.reserved_log_items_ = 5;
@@ -203,7 +235,7 @@ void init_raft(ptr<state_machine> sm_instance) {
     }
 
     // Wait until Raft server is ready (upto 5 seconds).
-    const size_t MAX_TRY = 20;
+    const size_t MAX_TRY = 100;
     std::cout << "init Raft instance ";
     for (size_t ii=0; ii<MAX_TRY; ++ii) {
         if (stuff.raft_instance_->is_initialized()) {

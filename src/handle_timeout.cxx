@@ -283,7 +283,7 @@ void raft_server::handle_election_timeout() {
     }
 
     // Only voting member can suggest vote.
-    if (!im_learner_) {
+    if (!im_learner_ && !test_disable_election_.load()) {
         p_wn("Election timeout, initiate leader election");
         if (!hb_alive_) {
             // Not the first election timeout, decay the target priority.
